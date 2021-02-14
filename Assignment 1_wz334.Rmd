@@ -1,0 +1,137 @@
+---
+title: "Assignment 1"
+author: "wz334"
+date: "2/10/2021"
+output: html_document
+---
+Exercise 1: Write an expression to compute the number of seconds in a 365-day year, and execute the expression. 
+```{r}
+60*60*24*365
+```
+
+Exercise 2: Define a workspace object which contains the number of seconds in 365-day year, and display the results.
+```{r}
+sec<-60*60*24*365
+sec
+```
+
+
+Exercise 3: Find the function name for base-10 logarithms, and compute the base-10 logarithm of 10, 100, and 1000 (use the `??` function to search).
+```{r}
+log10(10)
+log10(100)
+log10(1000)
+
+```
+Exercise 4: What are the arguments of the `rbinom` (random numbers following the binomial distribution) function? Are any default or must all be specified? What is the value returned?
+```{r}
+?rbinom
+rbinom(10,1,0.5)
+```
+
+Exercise 5: Display the vector of the number of successes in 24 trials with probability of success `0.2` (20%), this simulation carried out 128 times. 
+```{r}
+# I am actually not very clear here: why it works when I create sim like this?
+sim<-sum(rbinom(24,1,0.2))
+for(i in 1:128){
+sim[i]<-sum(rbinom(24,1,0.2))
+}
+```
+
+Exercise 6: Summarize the  result of `rbinom` (previous exercise) with the `table` function.  Which is the most likely result? What is the range of results?
+```{r}
+table(sim)
+```
+
+Exercise 7: Create and display a vector representing latitudes in degrees from $0^\circ$ (equator) to $+90^\circ$ (north pole), in intervals of $5^\circ$. Compute and display their cosines -- recall, the trig functions in R expect arguments in radians. Find and display the maximum cosine.
+```{r}
+?seq
+lat<- seq(0,90,by=5)
+lat<-(lat/180)*pi
+cos(lat)
+max(cos(lat))
+```
+Exercise 8: Check if the `gstat` package is installed on your system. If not, install it. Load it into the workspace. Display its help and find the `variogram` function. What is its description?
+```{r}
+#install.packages("gstat")
+library(gstat)
+#?gstat
+#?variogram
+```
+
+Exercise 9: Display the classes of the built-in constant `pi` and of the built-in constant `letters`.
+```{r}
+class(pi)
+class(letters)
+```
+
+Exercise 10: What is the class of the object returned by the `variogram` function? (Hint: see the heading "Value" in the help text.)
+```{r}
+library(sp)
+data(meuse)
+names(meuse)
+#It does not work
+#lzn.vgm=variogram(log(zinc)~1,data=meuse)
+```
+
+Exercise 11: List the datasets in the `gstat` package.
+```{r}
+data(package="gstat")
+```
+Exercise 12: Load, summarize, and show the structure of the `oxford` dataset.
+```{r}
+data(oxford)
+summary(oxford)
+str(oxford)
+```
+Exercise 13: load the `women` sample dataset. How many observations (cases) and how many attributes (fields) for each case? What are the column (field) and row names? What is the height of the first-listed woman?
+```{r}
+data(women)
+dim(women)
+colnames(women)
+women$height[1]
+```
+Exercise 14: List the factors in the `oxford` dataset.
+```{r}
+oxford$PROFILE
+oxford$PROFILE
+```
+Exercise 15: Identify the thin trees, defined as those with height/girth ratio more than 1 s.d. above the mean. You will have to define a new field in the dataframe with this ratio, and then use the `mean` and `sd` summary functions, along with a logical expression.
+```{r}
+data(trees)
+trees$Ratio<- trees$Height/trees$Girth
+ratio.mean<-mean(trees$Ratio)
+ratio.sd<-sd(trees$Ratio)
+trees$thintree<-ifelse(trees$Ratio<ratio.mean-ratio.sd,1,0)
+```
+
+Exercise 16: Display a histogram of the diamond prices in the `diamonds` dataset.
+```{r}
+library(ggplot2)
+data(diamonds)
+hist(diamonds$price)
+```
+Exercise 17: Write a model to predict tree height from tree girth. How much of the height can be predicted from the girth? 
+```{r}
+model1<-lm(trees$Height~trees$Girth)
+summary(model1)
+```
+Exercise 18: Write a model to predict tree volume as a linear function of tree height and tree girth, with no interaction.
+```{r}
+model2<-lm(trees$Volume~trees$Girth+trees$Height)
+summary(model2)
+```
+Exercise 19: Write a function to restrict the values of a vector to the range $0 \ldots 1$. Any values $< 0$ should be replaced with $0$, and any values $>1$ should be replaced with $1$.  Test the function on a vector with elements from $-1.2$ to $+1.2$ in increments of $0.1$ -- see the `seq` "sequence" function.
+```{r}
+restri<-function(x){
+  if(x<0)
+  {x=0}
+  else if(x>1)
+  {x=1}
+  return(x) 
+}
+test<-round(seq(-1.2,1.2,0.1),2)
+for(i in 1:length(test)){
+  print(restri(test[i]))}
+```
+
