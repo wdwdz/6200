@@ -1,0 +1,382 @@
+---
+title: "Assigment: Trend Surfaces"
+date: "`r Sys.Date()`"
+output:
+   html_document:
+     toc: TRUE
+     toc_float: TRUE
+     theme: "lumen"
+     code_folding: show
+     number_section: TRUE
+     fig_height: 6
+     fig_width: 8
+     fig_align: 'center'
+---
+
+# Dataset
+
+Task: Load the "Northeast Climate" R Dataset `ne_stations.RData`, with the `load` function. Use the `verbose=TRUE` optional argument to display the names of the objects that are loaded.
+```{r}
+require(sp)
+require(gstat)
+require(lattice)
+load("ne_stations.RData",verbose = TRUE)
+
+```
+
+
+Q: What are the data types of these objects? For those that are spatial, what are their coördinate reference systems (CRS)?
+
+Note: you will have to load the `sp` package to see the CRS.
+
+A:dataframes, latitude, longitude, two coordinates (East and North)
+
+
+We will work mostly with object `ne.df`, a dataframe version of the climate stations.
+
+Q: For how many climate stations are there records? How many states of the USA are represented?
+
+A: 305, 4
+
+Task: Display the names of the variables in this dataset.
+```{r}
+colnames(ne.df)
+
+```
+
+
+Q: What are the attributes in the `ne.df` data frame?
+
+A:  [1] "STATION_ID" "STATE"      "STATION_NA" "LATITUDE_D"
+ [5] "LONGITUDE_" "ELEVATION_" "OID_"       "COOP_ID"   
+ [9] "STATE_1"    "STN_NAME"   "LAT_DD"     "LONG_DD"   
+[13] "ELEV_FT"    "JAN_GDD50"  "FEB_GDD50"  "MAR_GDD50" 
+[17] "APR_GDD50"  "MAY_GDD50"  "JUN_GDD50"  "JUL_GDD50" 
+[21] "AUG_GDD50"  "SEP_GDD50"  "OCT_GDD50"  "NOV_GDD50" 
+[25] "DEC_GDD50"  "ANN_GDD50"  "E"          "N"         
+
+
+The response variable here is `ANN_GDD50` (annual growing-degree days), the coördinates are in fields `E` and `N`, the elevation of the station is in field `ELEVATION_`.
+
+# First-order trend surface
+
+Task: Compute a first-order trend surface model using the two coordinates (East and North) as the predictors, and the growing degree days as the dependent (response) variable, using Ordinary Least Squares linear regression.
+
+Display its summary and the linear model diagnostic plots "residuals vs. fitted" and "Normal Q-Q".
+
+```{r}
+ne.sp<-ne.df
+coordinates(ne.sp)<-c("E","N")
+#how do we know the units was m? why do we use median not mean?
+#ne.df$E<-(ne.df$E-median(ne.df$E))/1000
+#ne.df$N<-(ne.df$N-median(ne.df$N))/1000
+
+model.ts1<-lm(ne.df$ANN_GDD50~ne.df$E+ne.df$N)
+summary(model.ts1)
+par(mfrow=c(1,2))
+plot(model.ts1,which=1:2)
+
+```
+
+Q: What proportion of the variation in GDD50 is explained by the first-order trend?
+
+A: 0.5837
+
+Q: Which of the two coördinates most affects the GDD50?
+
+A: N
+
+Q: Is there a relation between the fitted values and residuals? If so, what?
+
+A: Yes. non-linear relationship.
+
+Q: Are the residuals normally-distributed? If not, how so? Are there any especially large residuals?
+
+A: No. Yes.
+
+Optional Task: Identify the most poorly-modelled station.
+```{r}
+range(model.ts1$residuals)
+outid<-which(model.ts1$residuals<(-1000))
+ne.df[outid,3]
+```
+
+
+Optional Q: Where is this? Why might it be so poorly modelled?
+
+Optional A: May be they are on mountains.
+
+Task: Display a post-plot of the residuals, with the positive residuals (under-predictions) shown in green and the negative (over-predictions) in red.
+```{r}
+res.ts1<-residuals(model.ts1)
+plot(ne.df$N~ne.df$E,cex = 3*abs(res.ts1)/max(abs(res.ts1)),
+     col=ifelse(res.ts1>0,"green","red"),
+     xlab="E",ylab="N")
+```
+
+
+Q: What is the spatial pattern of the trend-surface residuals? Does it suggest a higher-order trend?
+
+A: positive residuals are mainly in the center part of the map, negative residuals are distributed around the edges. Yes.
+
+# Second-order trend surface
+
+Task: Repeat all the steps of the previous section, and answer the same questions, for a full 2nd-order trend surface.
+
+```{r}
+model.ts2<-lm(ne.df$ANN_GDD50~ne.df$E+ne.df$N+I((ne.df$E)^2)+I((ne.df$N)^2)+I((ne.df$E)*(ne.df$N)))
+summary(model.ts2)
+par(mfrow=c(1,2))
+plot(model.ts2,which=1:2)
+```
+
+
+Q: What proportion of the variation in GDD50 is explained by the second-order trend?
+
+A: 0.6868
+
+Q: Which of the two coördinates (taking into account their squares also) most affects the GDD50?
+
+A: `I((ne.df$N)^2)`, `I((ne.df$E) * (ne.df$N))`
+
+Q: Is there a relation between the fitted values and residuals? If so, what?
+
+A: Maybe not.
+
+Q: Are the residuals normally-distributed? If not, how so? Are there any especially large residuals?
+
+A: Mostly are normally distributed. Yes.
+
+Optional Task: Identify the most poorly-modelled station.
+```{r}
+outid<-which(model.ts2$residuals<(-1000))
+ne.df[outid,3]
+```
+
+
+Optional Q: Where is this? Why might it be so poorly modelled?
+
+Optional A:  "MOUNT MANSFIELD". Mountains?
+
+Task: Display a post-plot of the residuals, with the positive residuals (under-predictions) shown in green and the negative (over-predictions) in red.
+```{r}
+
+res.ts2<-residuals(model.ts2)
+plot(ne.df$N~ne.df$E,cex = 3*abs(res.ts1)/max(abs(res.ts2)),
+     col=ifelse(res.ts2>0,"green","red"),
+     xlab="E",ylab="N")
+```
+
+Q: What is the spatial pattern of the trend-surface residuals? Does it suggest a higher-order trend?
+
+A: large residuals are still clustered. May be a higher-order trend.
+
+# Comparing trend orders
+
+Task: Compare the two orders of trend surfaces with an analysis of variance.
+```{r}
+anova(model.ts1,model.ts2)
+```
+
+
+Q: Is the 2nd-order trend clearly superior to the 1st-order trend?
+
+A: Yes.
+
+# Mapping
+
+Task: Load the `raster` package into the workspace. 
+
+Then, load a gridded DEM covering the study area `dem_nj_ny_pa_vt_4km.RData`, with the `load` function. Use the `verbose=TRUE` optional argument to display the names of the objects that are loaded.
+
+```{r}
+load("dem_nj_ny_pa_vt_4km.RData",verbose=TRUE)
+str(dem.ne.m.sp)
+   
+```
+
+
+Q: What object is loaded? What is its class? What is its CRS? Which of the point datasets does this match?
+
+A: dem.ne.m.sp, large spatial pixels dataframe, N,E coordinates, I dont know which of the point datasets does this match.
+
+Q: What is the bounding box and resolution of the grid? (You can see these with the `summary` function.)
+```{r}
+bbox(dem.ne.m.sp)
+summary(dem.ne.m.sp)
+```
+
+
+A:         min      max
+    E -385999.3 355750.7
+    N -395302.4 289937.6
+    cellcentre.offset cellsize
+    E	-384274.3	      3450	
+    N	-393450.4	      3704	
+
+Task: Display the grid with the `spplot` function.
+
+```{r}
+spplot(dem.ne.m.sp)
+```
+
+
+Task: Predict over this study area with the 2nd-order trend surface. Add this as  a field in the study area data frame.
+
+```{r}
+
+pred.ts2<-predict.lm(model.ts2, newdata=dem.ne.m.sp@grid,interval = "prediction",level = .95)
+summary(pred.ts2)
+summary(ne.df$ANN_GDD50)
+
+```
+
+Task: Summarize the predictions.
+
+
+Q: How do the predictions compare with the summary of the weather stations observations?
+
+A: Not very good
+
+Task: Display a map of the predictions using the `spplot` function, and specifying the field to display with the `zcol` argument to `spplot`.
+```{r}
+#'newdata' had 22649 rows but variables found have 305 rows
+#pred.ts2<-predict.lm(model.ts2, newdata=as.data.frame(dem.ne.m.sp@coords),interval = "prediction",level = .95)
+
+#sp.grid<-SpatialPointsDataFrame(coords = coordinates(dem.ne.m.sp@grid),data = as.data.frame(pred.ts2))
+```
+
+
+Q: Is this trend surface a realistic representation of the growing-degree days?  Explain.
+
+A: 
+
+# Generalized Additive Model (GAM)
+
+Task: Display a scatterplot of the GDD50 against the two coördinates.
+
+```{r}
+require(ggplot2)
+g1<-ggplot(ne.df,aes(x=E,y=ANN_GDD50))+
+  geom_point()+
+  geom_smooth(method="loess")
+
+g2<-ggplot(ne.df,aes(x=N,y=ANN_GDD50))+
+  geom_point()+
+  geom_smooth(method="loess")
+
+require(gridExtra)
+
+grid.arrange(g1,g2,ncol=2)
+
+```
+
+
+Q: Do these relations look linear or quadratic throughout their ranges?
+
+A: quadratic
+
+Task: Compute a Generalized Additive Model (GAM) of GDD50 modelled by the two coördinates.
+```{r}
+require(mgcv)
+ne.df$E<-coordinates(ne.sp)[,1]
+ne.df$N<-coordinates(ne.sp)[,2]
+model.gam<-gam(ANN_GDD50~s(E,N),data = ne.df)
+summary(model.gam)
+
+```
+
+
+Q: What proportion of the variation in GDD50 is explained by the GAM? How does this compare to the 2nd-order trend surface?
+
+A: 78.9%, more
+
+Task: Predict over this study area with the fitted GAM. Add this as  a field in the study area data frame.
+
+Note: you will have to convert the `SpatialPixelsDataFrame` to a regular `data.frame` as the argument to `newdata`, because `predict.gam` does not recognize `sp` objects.
+```{r}
+
+temp<-predict.gam(object = model.gam,newdata = as.data.frame(dem.ne.m.sp@coords),se.fit = TRUE)
+summary(temp$fit)
+
+
+```
+
+
+Task: Summarize the predictions.
+
+Q: How do the predictions compare with the summary of the weather stations observations, and to the summary of the 2nd-order trend surface predictions?
+
+A:Not really sure
+
+
+Task: Display a post-plot of the residuals.
+```{r}
+
+hist(residuals(model.gam))
+
+```
+
+```{r}
+ne.sp@data$resi.gam<-residuals(model.gam)
+bubble(ne.sp,zcol="resi.gam")
+```
+
+
+Q: What is the spatial pattern of the GAM trend-surface residuals? How does this differ from the pattern of the 2nd-order trend residuals?
+
+A: No spatial clusting?
+
+Task: Display a map of the predictions using the `spplot` function.
+```{r}
+res.gam<-residuals(model.gam)
+#Have problem with this.
+#sp.grid$pred.gam<-temp$fit
+#sp.grid$pred.gam.se<-temp$se.fit
+#p.gam<-spplot(sp.grid,zcol="pred.gam")
+
+```
+
+
+Q: Is this trend surface a realistic representation of the growing-degree days? Explain. How does it improve on the 2nd-order trend?
+
+A: 
+
+# Thin-plate splines
+
+Task: Load the `fields` package, to use for thin-plate spline calculation.
+
+
+
+Task: Add a field to the stations dataframe, containing a matrix of the two coördinates, as required by the `fields` package.
+
+
+Task: compute the thin-plate spline for the growing degree days, as a function of coördinates.
+
+
+
+Task: Predict with the thin-plate spline over the study area. Note you will have to make a matrix from the grid coördinates, interpolate on that, and then convert the prediction to a field in the grid.
+
+
+Task: Display the map.
+
+
+Q: Is this trend surface a realistic representation of the growing-degree days? Explain. Does it improve on the GAM trend?
+
+A: 
+
+# Challenge (Optional!) -- including elevation
+
+Of course, elevation also affects temperature and thus the growing-degree days. 
+
+Repeat the exercise, but including elevation in all the models. Comment on how and why the trend surfaces (now 3D) are different/improved from the 2D trends.
+
+In these models, consider elevation as an independent dimension, with no interaction with the geographic coördinates (although, that may not be a valid assumption... you could test this... ).
+
+Also, see if a transformation of elevation might make its relation with the target variable more linear.
+
+# Saving the workspace 
+
+Task: Save the workspace for a later exercise using the `save.image` function:
+
+
